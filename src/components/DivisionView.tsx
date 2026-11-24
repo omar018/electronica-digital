@@ -40,7 +40,9 @@ export const DivisionView: React.FC = () => {
     if (!steps.length || !result) return { latexCode: '', asciiReport: '' };
 
     let latex = `% ---------------------------------------------------------\n`;
-    latex += `% Universidad Nacional de Colombia - Facultad de Ingeniería\n`;
+    latex += `% Universidad Nacional de Colombia - Sede Medellín\n`;
+    latex += `% Facultad de Minas\n`;
+    latex += `% Docentes: Daniel González Montoya (Teoría) | Amado Ospina Montoya (Práctica)\n`;
     latex += `% Algoritmo de División Binaria (${isRestoring ? 'Con Restauración' : 'Sin Restauración'})\n`;
     latex += `% Dividendo = ${inputDividend} (${result.dividendBin})\n`;
     latex += `% Divisor   = ${inputDivisor} (${result.divisorBin})\n`;
@@ -56,7 +58,8 @@ export const DivisionView: React.FC = () => {
     });
     latex += `\\bottomrule\n\\end{tabular}\n\\end{table}\n`;
 
-    let ascii = `UNIVERSIDAD NACIONAL DE COLOMBIA - DEPARTAMENTO DE ING. ELÉCTRICA Y ELECTRÓNICA\n`;
+    let ascii = `UNIVERSIDAD NACIONAL DE COLOMBIA - SEDE MEDELLÍN - FACULTAD DE MINAS\n`;
+    ascii += `DOCENTES: Daniel González Montoya (Teoría) | Amado Ospina Montoya (Práctica)\n`;
     ascii += `ALGORITMO DE DIVISIÓN BINARIA (${isRestoring ? 'CON RESTAURACIÓN' : 'SIN RESTAURACIÓN'})\n`;
     ascii += `Dividendo: ${inputDividend} [${result.dividendBin}] | Divisor: ${inputDivisor} [${result.divisorBin}]\n`;
     ascii += `Cociente: ${result.quotientDec} [${result.quotientBin}] | Residuo: ${result.remainderDec} [${result.remainderBin}]\n`;

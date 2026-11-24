@@ -93,10 +93,10 @@ export function App() {
       <footer className="border-t border-slate-800 bg-slate-950 py-4 mt-8 text-xs font-mono text-slate-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
           <div>
-            Universidad Nacional de Colombia • Facultad de Ingeniería • Sede Bogotá
+            Universidad Nacional de Colombia • Sede Medellín • <span className="text-emerald-400 font-semibold">Facultad de Minas</span>
           </div>
           <div className="text-slate-400">
-            Electrónica Digital / Arquitectura de Computadores • Docente: <span className="text-white">Amado Ospina Montoya</span>
+            Docentes: <span className="text-slate-200">Daniel González Montoya (Teoría)</span> • <span className="text-slate-200">Amado Ospina Montoya (Práctica)</span>
           </div>
         </div>
       </footer>

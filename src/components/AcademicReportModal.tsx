@@ -124,9 +124,9 @@ export const AcademicReportModal: React.FC<AcademicReportModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-slate-800 bg-slate-950 flex items-center justify-between text-[11px] text-slate-500 font-mono">
-          <span>Universidad Nacional de Colombia • Facultad de Ingeniería</span>
-          <span>Docente: Ing. Amado Ospina Montoya</span>
+        <div className="px-5 py-3 border-t border-slate-800 bg-slate-950 flex flex-wrap items-center justify-between text-[11px] text-slate-500 font-mono gap-2">
+          <span>Universidad Nacional de Colombia • Sede Medellín • Facultad de Minas</span>
+          <span>Docentes: Daniel González M. (Teoría) | Amado Ospina M. (Práctica)</span>
         </div>
       </div>
     </div>

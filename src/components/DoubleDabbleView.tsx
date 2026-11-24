@@ -48,7 +48,9 @@ export const DoubleDabbleView: React.FC = () => {
     if (!activeSteps) return { latexCode: '', asciiReport: '' };
 
     let latex = `% ---------------------------------------------------------\n`;
-    latex += `% Universidad Nacional de Colombia - Facultad de Ingeniería\n`;
+    latex += `% Universidad Nacional de Colombia - Sede Medellín\n`;
+    latex += `% Facultad de Minas\n`;
+    latex += `% Docentes: Daniel González Montoya (Teoría) | Amado Ospina Montoya (Práctica)\n`;
     latex += `% Algoritmo Double Dabble (${direction === 'bin2bcd' ? 'Binario a BCD' : 'BCD a Binario'})\n`;
     latex += `% Entrada: ${inputValue}\n`;
     latex += `% ---------------------------------------------------------\n\n`;
@@ -63,7 +65,8 @@ export const DoubleDabbleView: React.FC = () => {
     });
     latex += `\\bottomrule\n\\end{tabular}\n\\end{table}\n`;
 
-    let ascii = `UNIVERSIDAD NACIONAL DE COLOMBIA - DEPARTAMENTO DE ING. ELÉCTRICA Y ELECTRÓNICA\n`;
+    let ascii = `UNIVERSIDAD NACIONAL DE COLOMBIA - SEDE MEDELLÍN - FACULTAD DE MINAS\n`;
+    ascii += `DOCENTES: Daniel González Montoya (Teoría) | Amado Ospina Montoya (Práctica)\n`;
     ascii += `ALGORITMO: Double Dabble (${direction === 'bin2bcd' ? 'Binario a BCD' : 'BCD a Binario'})\n`;
     ascii += `ENTRADA: ${inputValue}\n`;
     ascii += `--------------------------------------------------------------------------------------------------------\n`;

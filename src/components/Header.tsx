@@ -8,16 +8,18 @@ export const Header: React.FC = () => {
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between text-[11px] font-mono text-emerald-300">
           <div className="flex items-center gap-3">
             <span className="font-bold tracking-wider text-white">
-              UNIVERSIDAD NACIONAL DE COLOMBIA
+              UNIVERSIDAD NACIONAL DE COLOMBIA • SEDE MEDELLÍN
             </span>
             <span className="hidden md:inline text-emerald-500">•</span>
-            <span className="hidden md:inline text-emerald-400/90">
-              Facultad de Ingeniería • Electrónica Digital
+            <span className="hidden md:inline text-emerald-400/90 font-semibold">
+              FACULTAD DE MINAS
             </span>
           </div>
           <div className="flex items-center gap-2 text-slate-300">
-            <span>Docente:</span>
-            <span className="text-white font-semibold">Ing. Amado Ospina Montoya</span>
+            <span>Docentes:</span>
+            <span className="text-white font-medium">Daniel González M. (Teoría)</span>
+            <span className="text-emerald-500">|</span>
+            <span className="text-white font-medium">Amado Ospina M. (Práctica)</span>
           </div>
         </div>
       </div>

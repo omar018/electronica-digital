@@ -75,6 +75,8 @@ Sigue las instrucciones en consola y la aplicación quedará publicada en un sub
 ---
 
 ## 👨‍🏫 Autor & Curso
-- **Institución:** Universidad Nacional de Colombia
-- **Profesor:** Amado Ospina Montoya
+- **Institución:** Universidad Nacional de Colombia - Sede Medellín
+- **Facultad:** Facultad de Minas
+- **Docente de Teoría:** Ing. Daniel González Montoya
+- **Docente de Práctica / Laboratorio:** Ing. Amado Ospina Montoya
 - **Asignatura:** Electrónica Digital / Arquitectura de Computadores

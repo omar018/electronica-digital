@@ -35,7 +35,9 @@ export const BoothView: React.FC = () => {
     if (!steps.length || !result) return { latexCode: '', asciiReport: '' };
 
     let latex = `% ---------------------------------------------------------\n`;
-    latex += `% Universidad Nacional de Colombia - Facultad de Ingeniería\n`;
+    latex += `% Universidad Nacional de Colombia - Sede Medellín\n`;
+    latex += `% Facultad de Minas\n`;
+    latex += `% Docentes: Daniel González Montoya (Teoría) | Amado Ospina Montoya (Práctica)\n`;
     latex += `% Algoritmo de Multiplicación de Booth (${isSigned ? 'Con Signo' : 'Sin Signo'})\n`;
     latex += `% Multiplicando M = ${inputM} (${result.multiplicandBin})\n`;
     latex += `% Multiplicador Q = ${inputQ} (${result.multiplierBin})\n`;
@@ -52,7 +54,8 @@ export const BoothView: React.FC = () => {
     });
     latex += `\\bottomrule\n\\end{tabular}\n\\end{table}\n`;
 
-    let ascii = `UNIVERSIDAD NACIONAL DE COLOMBIA - DEPARTAMENTO DE ING. ELÉCTRICA Y ELECTRÓNICA\n`;
+    let ascii = `UNIVERSIDAD NACIONAL DE COLOMBIA - SEDE MEDELLÍN - FACULTAD DE MINAS\n`;
+    ascii += `DOCENTES: Daniel González Montoya (Teoría) | Amado Ospina Montoya (Práctica)\n`;
     ascii += `ALGORITMO DE BOOTH (${isSigned ? 'CON SIGNO - COMPLEMENTO A 2' : 'SIN SIGNO - SHIFT-ADD'})\n`;
     ascii += `Multiplicando (M): ${inputM} [${result.multiplicandBin}]\n`;
     ascii += `Multiplicador (Q): ${inputQ} [${result.multiplierBin}]\n`;
