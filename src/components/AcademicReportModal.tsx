@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Copy, Check, Printer, FileText, X } from 'lucide-react';
 
 interface AcademicReportModalProps {
@@ -24,6 +24,16 @@ export const AcademicReportModal: React.FC<AcademicReportModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'latex' | 'ascii'>('latex');
   const [copied, setCopied] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
