@@ -2,19 +2,19 @@ import React, { useState, useMemo } from 'react';
 import { binaryToBcdDoubleDabble, bcdToBinaryDoubleDabble } from '../engine/doubleDabble';
 import { parseInput } from '../engine/utils';
 import { StepPlayer } from './StepPlayer';
-import { Check, Copy, Sparkles } from 'lucide-react';
+import { RegisterGrid } from './RegisterGrid';
+import { AcademicReportModal } from './AcademicReportModal';
+import { FileText, RotateCcw } from 'lucide-react';
 
 export const DoubleDabbleView: React.FC = () => {
   const [direction, setDirection] = useState<'bin2bcd' | 'bcd2bin'>('bin2bcd');
   const [inputValue, setInputValue] = useState<string>('142');
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [showAllSteps, setShowAllSteps] = useState<boolean>(true);
-  const [copied, setCopied] = useState<boolean>(false);
+  const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
 
   // Parsing & Calculation for Bin -> BCD
-  const parsed = useMemo(() => {
-    return parseInput(inputValue, false);
-  }, [inputValue]);
+  const parsed = useMemo(() => parseInput(inputValue, false), [inputValue]);
 
   const binToBcdResult = useMemo(() => {
     if (!parsed.valid) return null;
@@ -22,7 +22,6 @@ export const DoubleDabbleView: React.FC = () => {
   }, [parsed]);
 
   // Parsing & Calculation for BCD -> Bin
-  // Digits input e.g. "0 0 1 4 2" or "142"
   const bcdDigits = useMemo((): [number, number, number, number, number] => {
     const raw = inputValue.replace(/[^0-9]/g, '');
     const padded = raw.padStart(5, '0').slice(-5);
@@ -42,94 +41,101 @@ export const DoubleDabbleView: React.FC = () => {
 
   const activeSteps = direction === 'bin2bcd' ? binToBcdResult?.steps : bcdToBinResult?.steps;
   const totalSteps = activeSteps?.length || 0;
-
   const currentStepData = activeSteps && activeSteps[currentStep] ? activeSteps[currentStep] : null;
 
-  const handleCopyTable = () => {
-    if (!activeSteps) return;
-    let text = `PROCEDIMIENTO DOUBLE DABBLE (${direction === 'bin2bcd' ? 'Binario a BCD' : 'BCD a Binario'})\n`;
-    text += `Entrada: ${inputValue}\n\n`;
-    text += `Paso | Operación | D_Mil | U_Mil | Centena | Decena | Unidad | Registro Binario | Ajuste\n`;
-    text += `-----|-----------|-------|-------|---------|--------|--------|------------------|-------\n`;
+  // LaTeX & ASCII Generator
+  const { latexCode, asciiReport } = useMemo(() => {
+    if (!activeSteps) return { latexCode: '', asciiReport: '' };
+
+    let latex = `% ---------------------------------------------------------\n`;
+    latex += `% Universidad Nacional de Colombia - Facultad de Ingeniería\n`;
+    latex += `% Algoritmo Double Dabble (${direction === 'bin2bcd' ? 'Binario a BCD' : 'BCD a Binario'})\n`;
+    latex += `% Entrada: ${inputValue}\n`;
+    latex += `% ---------------------------------------------------------\n\n`;
+    latex += `\\begin{table}[htbp]\n\\centering\n\\small\n`;
+    latex += `\\caption{Traza de ejecución del algoritmo Double Dabble para valor $${inputValue}$}\n`;
+    latex += `\\begin{tabular}{r l c c c c c l l}\n`;
+    latex += `\\toprule\n`;
+    latex += `\\textbf{Ciclo} & \\textbf{Operación} & \\textbf{D. Mil} & \\textbf{U. Mil} & \\textbf{Centena} & \\textbf{Decena} & \\textbf{Unidad} & \\textbf{Reg. Binario} & \\textbf{Ajuste} \\\\\n`;
+    latex += `\\midrule\n`;
     activeSteps.forEach((s) => {
-      text += `${s.cycle} | ${s.operation} | ${s.bcdBinary[0]} | ${s.bcdBinary[1]} | ${s.bcdBinary[2]} | ${s.bcdBinary[3]} | ${s.bcdBinary[4]} | ${s.binaryRegister} | ${s.adjustmentMade || ''}\n`;
+      latex += `${s.cycle} & ${s.operation} & ${s.bcdBinary[0]} & ${s.bcdBinary[1]} & ${s.bcdBinary[2]} & ${s.bcdBinary[3]} & ${s.bcdBinary[4]} & \\texttt{${s.binaryRegister}} & ${s.adjustmentMade || '--'} \\\\\n`;
     });
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+    latex += `\\bottomrule\n\\end{tabular}\n\\end{table}\n`;
+
+    let ascii = `UNIVERSIDAD NACIONAL DE COLOMBIA - DEPARTAMENTO DE ING. ELÉCTRICA Y ELECTRÓNICA\n`;
+    ascii += `ALGORITMO: Double Dabble (${direction === 'bin2bcd' ? 'Binario a BCD' : 'BCD a Binario'})\n`;
+    ascii += `ENTRADA: ${inputValue}\n`;
+    ascii += `--------------------------------------------------------------------------------------------------------\n`;
+    ascii += `Ciclo | Operacion           | D_Mil | U_Mil | Cent. | Dec.  | Unid. | Registro Binario | Ajuste\n`;
+    ascii += `--------------------------------------------------------------------------------------------------------\n`;
+    activeSteps.forEach((s) => {
+      const op = s.operation.padEnd(19, ' ');
+      ascii += `${String(s.cycle).padStart(5, ' ')} | ${op} | ${s.bcdBinary[0]}  | ${s.bcdBinary[1]}  | ${s.bcdBinary[2]}  | ${s.bcdBinary[3]}  | ${s.bcdBinary[4]}  | ${s.binaryRegister} | ${s.adjustmentMade || ''}\n`;
+    });
+    ascii += `--------------------------------------------------------------------------------------------------------\n`;
+
+    return { latexCode: latex, asciiReport: ascii };
+  }, [activeSteps, direction, inputValue]);
 
   return (
-    <div className="space-y-6">
-      {/* Top Controls & Inputs */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-slate-200">Dirección de Conversión:</span>
-              <div className="inline-flex p-1 rounded-xl bg-slate-800 border border-slate-700/60 text-xs">
-                <button
-                  onClick={() => {
-                    setDirection('bin2bcd');
-                    setInputValue('142');
-                    setCurrentStep(0);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition ${
-                    direction === 'bin2bcd'
-                      ? 'bg-cyan-500 text-slate-950 font-bold shadow'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  Binario / Decimal → BCD
-                </button>
-                <button
-                  onClick={() => {
-                    setDirection('bcd2bin');
-                    setInputValue('00142');
-                    setCurrentStep(0);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition ${
-                    direction === 'bcd2bin'
-                      ? 'bg-indigo-500 text-white font-bold shadow'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  BCD → Binario (Inverso)
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Ejemplos:</span>
+    <div className="space-y-4">
+      {/* Parameters Workbench */}
+      <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-mono uppercase text-slate-400">Modalidad Operativa:</span>
+            <div className="inline-flex rounded border border-slate-800 bg-slate-950 p-0.5 text-xs font-mono">
               <button
-                onClick={() => setInputValue(direction === 'bin2bcd' ? '142' : '00142')}
-                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 font-mono"
+                onClick={() => {
+                  setDirection('bin2bcd');
+                  setInputValue('142');
+                  setCurrentStep(0);
+                }}
+                className={`px-3 py-1 rounded transition ${
+                  direction === 'bin2bcd'
+                    ? 'bg-emerald-700 text-white font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
               >
-                142 (Vídeo)
+                Binario / Decimal → BCD (Shift-Add-3)
               </button>
               <button
-                onClick={() => setInputValue(direction === 'bin2bcd' ? 'b1011' : '00011')}
-                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 font-mono"
+                onClick={() => {
+                  setDirection('bcd2bin');
+                  setInputValue('00142');
+                  setCurrentStep(0);
+                }}
+                className={`px-3 py-1 rounded transition ${
+                  direction === 'bcd2bin'
+                    ? 'bg-emerald-700 text-white font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
               >
-                11
-              </button>
-              <button
-                onClick={() => setInputValue(direction === 'bin2bcd' ? '4096' : '04096')}
-                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 font-mono"
-              >
-                4096
+                BCD → Binario Inverso (Shift-Subtract-3)
               </button>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-xs font-medium text-slate-300">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsReportOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 text-xs font-mono transition"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Generar Informe LaTeX</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div className="md:col-span-2 space-y-1.5">
+            <label className="block text-xs font-mono text-slate-300">
               {direction === 'bin2bcd'
-                ? 'Número a convertir (Decimal o Binario prefijado con "b", ej: 142 o b10001110):'
-                : 'Dígitos BCD (hasta 5 dígitos, ej: 00142 o 142):'}
+                ? 'Vector de entrada (Formato decimal [0..65535] o binario con prefijo "b", ej: 142 o b10001110):'
+                : 'Cadena BCD (Hasta 5 dígitos BCD, ej: 00142):'}
             </label>
-            <div className="flex items-center gap-3">
+            <div className="flex gap-2">
               <input
                 type="text"
                 value={inputValue}
@@ -137,125 +143,106 @@ export const DoubleDabbleView: React.FC = () => {
                   setInputValue(e.target.value);
                   setCurrentStep(0);
                 }}
-                placeholder={direction === 'bin2bcd' ? 'Ej: 142 o b10110' : 'Ej: 00142'}
-                className="flex-1 bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-slate-100 font-mono text-sm outline-none transition"
+                className="flex-1 bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded px-3 py-1.5 font-mono text-xs text-white outline-none"
               />
               <button
-                onClick={handleCopyTable}
-                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs transition"
-                title="Copiar tabla en formato Markdown para tu reporte"
+                onClick={() => setInputValue(direction === 'bin2bcd' ? '142' : '00142')}
+                className="px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-mono flex items-center gap-1"
+                title="Cargar caso del vídeo (142)"
               >
-                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                <span>{copied ? 'Copiado' : 'Copiar Tabla'}</span>
+                <RotateCcw className="w-3 h-3" />
+                <span>Caso Vídeo (142)</span>
               </button>
             </div>
             {direction === 'bin2bcd' && !parsed.valid && (
-              <p className="text-xs text-rose-400">{parsed.error}</p>
+              <p className="text-[11px] font-mono text-rose-400">{parsed.error}</p>
+            )}
+          </div>
+
+          {/* Synthesis Card */}
+          <div className="bg-slate-950 border border-slate-800 rounded p-2.5 font-mono text-xs space-y-1">
+            <div className="text-[10px] uppercase font-bold text-slate-500">Resumen de Conversión</div>
+            {direction === 'bin2bcd' && binToBcdResult && (
+              <>
+                <div className="text-slate-300">
+                  DEC: <span className="text-white font-bold">{binToBcdResult.inputDecimal}</span> | BIN:{' '}
+                  <span className="text-emerald-400">{binToBcdResult.inputBinary}</span>
+                </div>
+                <div className="text-slate-300">
+                  BCD: <span className="text-emerald-300 font-bold">{binToBcdResult.bcdFormatted}</span> (
+                  <span className="text-white">{binToBcdResult.bcdString}</span>)
+                </div>
+              </>
+            )}
+            {direction === 'bcd2bin' && bcdToBinResult && (
+              <>
+                <div className="text-slate-300">
+                  Dígitos BCD: <span className="text-white font-bold">{bcdDigits.join(' ')}</span>
+                </div>
+                <div className="text-slate-300">
+                  BIN: <span className="text-emerald-400">{bcdToBinResult.outputBinary}</span> | DEC:{' '}
+                  <span className="text-emerald-300 font-bold">{bcdToBinResult.outputDecimal}</span>
+                </div>
+              </>
             )}
           </div>
         </div>
-
-        {/* Live Result Summary Card */}
-        <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Resultado Final
-            </span>
-            <span className="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">
-              16 BITS
-            </span>
-          </div>
-
-          {direction === 'bin2bcd' && binToBcdResult && (
-            <div className="space-y-3 font-mono text-xs">
-              <div>
-                <span className="text-slate-500 block">DECIMAL:</span>
-                <span className="text-xl font-bold text-white">{binToBcdResult.inputDecimal}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block">BINARIO (16b):</span>
-                <span className="text-emerald-400 break-all">{binToBcdResult.inputBinary}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block">BCD (Dígitos y Nibbles):</span>
-                <span className="text-cyan-400 font-bold text-sm block">
-                  {binToBcdResult.bcdFormatted}
-                </span>
-                <span className="text-slate-400 text-xs">
-                  Dígitos: <strong className="text-white">{binToBcdResult.bcdString}</strong>
-                </span>
-              </div>
-            </div>
-          )}
-
-          {direction === 'bcd2bin' && bcdToBinResult && (
-            <div className="space-y-3 font-mono text-xs">
-              <div>
-                <span className="text-slate-500 block">DÍGITOS BCD:</span>
-                <span className="text-xl font-bold text-white">{bcdDigits.join(' ')}</span>
-                <span className="text-slate-400 text-xs block">{bcdToBinResult.inputBcdFormatted}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block">BINARIO CALCULADO (16b):</span>
-                <span className="text-emerald-400 break-all">{bcdToBinResult.outputBinary}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block">DECIMAL OBTENIDO:</span>
-                <span className="text-cyan-400 font-bold text-lg">{bcdToBinResult.outputDecimal}</span>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Visual BCD Register Nibbles Display */}
+      {/* Hardware Bus and Register Display at Current Step */}
       {currentStepData && (
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
-            <h3 className="text-sm font-semibold text-slate-200">
-              Estado de los Registros ({currentStepData.operation} - Ciclo {currentStepData.cycle}/16)
-            </h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between font-mono text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-xs"></span>
+              <span className="text-slate-300 font-bold uppercase">
+                Estado Físico de Registros • Ciclo {String(currentStepData.cycle).padStart(2, '0')}/16
+              </span>
+              <span className="text-slate-500">({currentStepData.operation})</span>
+            </div>
             {currentStepData.adjustmentMade && (
-              <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium">
-                ⚡ {currentStepData.adjustmentMade}
+              <span className="px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800 text-[11px]">
+                Ajuste BCD: {currentStepData.adjustmentMade}
               </span>
             )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-center">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-2 font-mono">
             {['Decenas de Mil', 'Unidades de Mil', 'Centenas', 'Decenas', 'Unidades'].map((name, idx) => (
-              <div
-                key={name}
-                className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5"
-              >
-                <span className="text-[10px] uppercase font-bold text-slate-400 block truncate">
+              <div key={name} className="bg-slate-900 border border-slate-800 rounded p-2.5 text-center">
+                <span className="text-[10px] text-slate-500 uppercase block font-semibold truncate">
                   {name}
                 </span>
-                <div className="text-lg font-bold font-mono text-cyan-400">
+                <div className="text-xl font-bold text-white my-0.5">
                   {currentStepData.bcdDigits[idx]}
                 </div>
-                <div className="text-xs font-mono text-slate-300 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
+                <div className="text-[11px] text-emerald-400 bg-slate-950 py-0.5 px-1 rounded border border-slate-800">
                   {currentStepData.bcdBinary[idx]}
                 </div>
               </div>
             ))}
 
-            <div className="p-3 rounded-xl bg-slate-950 border border-indigo-500/30 space-y-1.5">
-              <span className="text-[10px] uppercase font-bold text-indigo-400 block truncate">
-                Reg. Binario
+            <div className="bg-slate-900 border border-slate-800 rounded p-2.5 text-center">
+              <span className="text-[10px] text-slate-500 uppercase block font-semibold truncate">
+                Reg. Desplazamiento
               </span>
-              <div className="text-xs font-mono text-slate-200 bg-slate-900 px-1 py-1 rounded break-all">
+              <div className="text-xs text-emerald-400 bg-slate-950 py-1.5 px-1 rounded border border-slate-800 mt-2 break-all">
                 {currentStepData.binaryRegister}
               </div>
-              <span className="text-[10px] text-slate-500">
-                {direction === 'bin2bcd' ? 'Bits restantes' : 'Bits generados'}
-              </span>
             </div>
           </div>
+
+          {/* Hardware Register Flip-Flop Component */}
+          <RegisterGrid
+            label={direction === 'bin2bcd' ? 'Registro de Entrada / Shift Register' : 'Registro Reconstituido'}
+            bits={currentStepData.binaryRegister}
+            sublabel={currentStepData.description}
+            accentColor="emerald"
+          />
         </div>
       )}
 
-      {/* Step Player */}
+      {/* Clock Stepper Controls */}
       {totalSteps > 0 && (
         <StepPlayer
           currentStep={currentStep}
@@ -266,32 +253,32 @@ export const DoubleDabbleView: React.FC = () => {
         />
       )}
 
-      {/* Steps Table */}
+      {/* Execution Trace Table */}
       {activeSteps && (
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-200">
-              Tabla de Procedimiento del Algoritmo Double Dabble
-            </h3>
-            <span className="text-xs text-slate-400">{activeSteps.length} iteraciones registradas</span>
+        <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+          <div className="px-4 py-2.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between font-mono text-xs">
+            <span className="font-bold text-slate-300 uppercase">
+              Tabla de Estados y Transición de Registros ({activeSteps.length} Pasos Registrados)
+            </span>
+            <span className="text-slate-500 text-[11px]">Norma IEEE / U. Nacional</span>
           </div>
 
-          <div className="overflow-x-auto max-h-[480px]">
+          <div className="overflow-x-auto max-h-[460px]">
             <table className="w-full text-left font-mono text-xs border-collapse">
-              <thead className="sticky top-0 bg-slate-950 text-slate-400 border-b border-slate-800">
+              <thead className="sticky top-0 bg-slate-950 text-slate-400 border-b border-slate-800 text-[11px]">
                 <tr>
-                  <th className="py-2.5 px-3">Ciclo</th>
-                  <th className="py-2.5 px-3">Operación</th>
-                  <th className="py-2.5 px-2 text-center text-cyan-400">D. Mil</th>
-                  <th className="py-2.5 px-2 text-center text-cyan-400">U. Mil</th>
-                  <th className="py-2.5 px-2 text-center text-cyan-400">Centena</th>
-                  <th className="py-2.5 px-2 text-center text-cyan-400">Decena</th>
-                  <th className="py-2.5 px-2 text-center text-cyan-400">Unidad</th>
-                  <th className="py-2.5 px-3 text-indigo-400">Registro Binario</th>
-                  <th className="py-2.5 px-3 text-slate-400">Detalle</th>
+                  <th className="py-2 px-3 border-r border-slate-800 w-12 text-center">Ciclo</th>
+                  <th className="py-2 px-3 border-r border-slate-800">Operación Realizada</th>
+                  <th className="py-2 px-2 border-r border-slate-800 text-center">D. Mil</th>
+                  <th className="py-2 px-2 border-r border-slate-800 text-center">U. Mil</th>
+                  <th className="py-2 px-2 border-r border-slate-800 text-center">Centena</th>
+                  <th className="py-2 px-2 border-r border-slate-800 text-center">Decena</th>
+                  <th className="py-2 px-2 border-r border-slate-800 text-center">Unidad</th>
+                  <th className="py-2 px-3 border-r border-slate-800 text-emerald-400">Registro Binario (16b)</th>
+                  <th className="py-2 px-3 text-slate-400">Detalle de Transición</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-800/80 text-[11px]">
                 {activeSteps.map((step, idx) => {
                   const isCurrent = idx === currentStep;
                   if (!showAllSteps && !isCurrent) return null;
@@ -300,35 +287,27 @@ export const DoubleDabbleView: React.FC = () => {
                     <tr
                       key={idx}
                       onClick={() => setCurrentStep(idx)}
-                      className={`cursor-pointer transition ${
+                      className={`cursor-pointer transition-colors ${
                         isCurrent
-                          ? 'bg-cyan-500/15 border-l-4 border-cyan-400'
-                          : 'hover:bg-slate-800/40'
+                          ? 'bg-emerald-950/40 border-l-4 border-emerald-500 text-white'
+                          : 'hover:bg-slate-800/40 text-slate-300'
                       }`}
                     >
-                      <td className="py-2 px-3 font-bold text-slate-300">{step.cycle}</td>
-                      <td className="py-2 px-3">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                            step.operation.includes('+3')
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                              : step.operation.includes('-3')
-                              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                              : step.operation.includes('Desplazamiento')
-                              ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                              : 'bg-slate-800 text-slate-300'
-                          }`}
-                        >
-                          {step.operation}
-                        </span>
+                      <td className="py-1.5 px-3 border-r border-slate-800 text-center font-bold">
+                        {step.cycle}
                       </td>
-                      <td className="py-2 px-2 text-center text-slate-300">{step.bcdBinary[0]}</td>
-                      <td className="py-2 px-2 text-center text-slate-300">{step.bcdBinary[1]}</td>
-                      <td className="py-2 px-2 text-center text-slate-300">{step.bcdBinary[2]}</td>
-                      <td className="py-2 px-2 text-center text-slate-300">{step.bcdBinary[3]}</td>
-                      <td className="py-2 px-2 text-center text-slate-300">{step.bcdBinary[4]}</td>
-                      <td className="py-2 px-3 font-mono text-emerald-400">{step.binaryRegister}</td>
-                      <td className="py-2 px-3 text-[11px] text-slate-400 max-w-xs truncate">
+                      <td className="py-1.5 px-3 border-r border-slate-800 font-medium">
+                        {step.operation}
+                      </td>
+                      <td className="py-1.5 px-2 border-r border-slate-800 text-center">{step.bcdBinary[0]}</td>
+                      <td className="py-1.5 px-2 border-r border-slate-800 text-center">{step.bcdBinary[1]}</td>
+                      <td className="py-1.5 px-2 border-r border-slate-800 text-center">{step.bcdBinary[2]}</td>
+                      <td className="py-1.5 px-2 border-r border-slate-800 text-center">{step.bcdBinary[3]}</td>
+                      <td className="py-1.5 px-2 border-r border-slate-800 text-center">{step.bcdBinary[4]}</td>
+                      <td className="py-1.5 px-3 border-r border-slate-800 text-emerald-400 font-mono">
+                        {step.binaryRegister}
+                      </td>
+                      <td className="py-1.5 px-3 text-slate-400 truncate max-w-xs">
                         {step.adjustmentMade || step.description}
                       </td>
                     </tr>
@@ -339,6 +318,22 @@ export const DoubleDabbleView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Academic LaTeX Modal */}
+      <AcademicReportModal
+        title="Informe de Laboratorio - Double Dabble"
+        algorithmName={`Double Dabble (${direction === 'bin2bcd' ? 'Binario a BCD' : 'BCD a Binario Inverso'})`}
+        inputsDescription={`Entrada: ${inputValue}`}
+        resultsDescription={
+          direction === 'bin2bcd'
+            ? `BCD: ${binToBcdResult?.bcdFormatted} (${binToBcdResult?.bcdString})`
+            : `Decimal: ${bcdToBinResult?.outputDecimal} | Binario: ${bcdToBinResult?.outputBinary}`
+        }
+        latexCode={latexCode}
+        asciiReport={asciiReport}
+        isOpen={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
+      />
     </div>
   );
 };

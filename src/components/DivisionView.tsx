@@ -2,7 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { restoringDivision, nonRestoringDivision } from '../engine/division';
 import { parseInput } from '../engine/utils';
 import { StepPlayer } from './StepPlayer';
-import { Copy, Check, Sparkles, AlertTriangle } from 'lucide-react';
+import { RegisterGrid } from './RegisterGrid';
+import { AcademicReportModal } from './AcademicReportModal';
+import { FileText, RotateCcw, AlertTriangle } from 'lucide-react';
 
 export const DivisionView: React.FC = () => {
   const [isRestoring, setIsRestoring] = useState<boolean>(true);
@@ -10,7 +12,7 @@ export const DivisionView: React.FC = () => {
   const [inputDivisor, setInputDivisor] = useState<string>('5');
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [showAllSteps, setShowAllSteps] = useState<boolean>(true);
-  const [copied, setCopied] = useState<boolean>(false);
+  const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
 
   // Parsing inputs (unsigned 16 bits)
   const parsedDividend = useMemo(() => parseInput(inputDividend, false), [inputDividend]);
@@ -33,251 +35,212 @@ export const DivisionView: React.FC = () => {
   const steps = result?.steps || [];
   const currentStepData = steps[currentStep] || null;
 
-  const handleCopyTable = () => {
-    if (!steps.length) return;
-    let text = `DIVISIÓN BINARIA (${isRestoring ? 'CON RESTAURACIÓN' : 'SIN RESTAURACIÓN'})\n`;
-    text += `Dividendo (Q): ${inputDividend} | Divisor (M): ${inputDivisor}\n\n`;
-    text += `| Ciclo | Registro A (Acumulador) | Registro Q (Cociente) | Divisor M         | Operación |\n`;
-    text += `|-------|-------------------------|-----------------------|-------------------|-----------|\n`;
+  // LaTeX & ASCII Generator
+  const { latexCode, asciiReport } = useMemo(() => {
+    if (!steps.length || !result) return { latexCode: '', asciiReport: '' };
+
+    let latex = `% ---------------------------------------------------------\n`;
+    latex += `% Universidad Nacional de Colombia - Facultad de Ingeniería\n`;
+    latex += `% Algoritmo de División Binaria (${isRestoring ? 'Con Restauración' : 'Sin Restauración'})\n`;
+    latex += `% Dividendo = ${inputDividend} (${result.dividendBin})\n`;
+    latex += `% Divisor   = ${inputDivisor} (${result.divisorBin})\n`;
+    latex += `% ---------------------------------------------------------\n\n`;
+    latex += `\\begin{table}[htbp]\n\\centering\n\\small\n`;
+    latex += `\\caption{Traza de ejecución de división: $${inputDividend} \\div ${inputDivisor} = ${result.quotientDec}$ con residuo $${result.remainderDec}$}\n`;
+    latex += `\\begin{tabular}{r c c c l}\n`;
+    latex += `\\toprule\n`;
+    latex += `\\textbf{Ciclo} & \\textbf{Registro A (Acumulador)} & \\textbf{Registro Q (Cociente)} & \\textbf{Divisor M} & \\textbf{Operación} \\\\\n`;
+    latex += `\\midrule\n`;
     steps.forEach((s) => {
-      text += `| ${s.cycle} | ${s.A} | ${s.Q} | ${s.M} | ${s.operation} |\n`;
+      latex += `${s.cycle} & \\texttt{${s.A}} & \\texttt{${s.Q}} & \\texttt{${s.M}} & ${s.operation} \\\\\n`;
     });
-    text += `\nCociente: ${result?.quotientDec} (${result?.quotientBin}) | Residuo: ${result?.remainderDec} (${result?.remainderBin})\n`;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+    latex += `\\bottomrule\n\\end{tabular}\n\\end{table}\n`;
+
+    let ascii = `UNIVERSIDAD NACIONAL DE COLOMBIA - DEPARTAMENTO DE ING. ELÉCTRICA Y ELECTRÓNICA\n`;
+    ascii += `ALGORITMO DE DIVISIÓN BINARIA (${isRestoring ? 'CON RESTAURACIÓN' : 'SIN RESTAURACIÓN'})\n`;
+    ascii += `Dividendo: ${inputDividend} [${result.dividendBin}] | Divisor: ${inputDivisor} [${result.divisorBin}]\n`;
+    ascii += `Cociente: ${result.quotientDec} [${result.quotientBin}] | Residuo: ${result.remainderDec} [${result.remainderBin}]\n`;
+    ascii += `Comprobación: ${result.dividendDec} = (${result.divisorDec} x ${result.quotientDec}) + ${result.remainderDec}\n`;
+    ascii += `--------------------------------------------------------------------------------------------------------\n`;
+    ascii += `| Ciclo | Registro A (Acumulador) | Registro Q (Cociente) | Divisor M         | Operación               |\n`;
+    ascii += `--------------------------------------------------------------------------------------------------------\n`;
+    steps.forEach((s) => {
+      ascii += `| ${String(s.cycle).padStart(5, ' ')} | ${s.A}        | ${s.Q}        | ${s.M} | ${s.operation.padEnd(23, ' ')} |\n`;
+    });
+    ascii += `--------------------------------------------------------------------------------------------------------\n`;
+
+    return { latexCode: latex, asciiReport: ascii };
+  }, [steps, result, isRestoring, inputDividend, inputDivisor]);
 
   return (
-    <div className="space-y-6">
-      {/* Configuration & Inputs */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-slate-200">Método de División:</span>
-              <div className="inline-flex p-1 rounded-xl bg-slate-800 border border-slate-700/60 text-xs">
-                <button
-                  onClick={() => {
-                    setIsRestoring(true);
-                    setCurrentStep(0);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition ${
-                    isRestoring
-                      ? 'bg-cyan-500 text-slate-950 font-bold shadow'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  Con Restauración (Restoring)
-                </button>
-                <button
-                  onClick={() => {
-                    setIsRestoring(false);
-                    setCurrentStep(0);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition ${
-                    !isRestoring
-                      ? 'bg-indigo-600 text-white font-bold shadow'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  Sin Restauración (Non-Restoring)
-                </button>
-              </div>
+    <div className="space-y-4">
+      {/* Parameters Workbench */}
+      <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-mono uppercase text-slate-400">Método de División:</span>
+            <div className="inline-flex rounded border border-slate-800 bg-slate-950 p-0.5 text-xs font-mono">
+              <button
+                onClick={() => {
+                  setIsRestoring(true);
+                  setCurrentStep(0);
+                }}
+                className={`px-3 py-1 rounded transition ${
+                  isRestoring
+                    ? 'bg-emerald-700 text-white font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                División con Restauración (Restoring)
+              </button>
+              <button
+                onClick={() => {
+                  setIsRestoring(false);
+                  setCurrentStep(0);
+                }}
+                className={`px-3 py-1 rounded transition ${
+                  !isRestoring
+                    ? 'bg-emerald-700 text-white font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                División sin Restauración (Non-Restoring)
+              </button>
             </div>
+          </div>
 
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Ejemplos:</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsReportOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 text-xs font-mono transition"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Generar Informe LaTeX</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-mono text-slate-300">
+              Dividendo (Cargado en Q, 16 bits):
+            </label>
+            <input
+              type="text"
+              value={inputDividend}
+              onChange={(e) => {
+                setInputDividend(e.target.value);
+                setCurrentStep(0);
+              }}
+              className="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded px-3 py-1.5 font-mono text-xs text-white outline-none"
+            />
+            {parsedDividend.valid && (
+              <div className="text-[11px] font-mono text-slate-400">
+                DEC: <span className="text-white font-bold">{parsedDividend.dec}</span> | BIN:{' '}
+                <span className="text-emerald-400">{parsedDividend.bin}</span>
+              </div>
+            )}
+            {!parsedDividend.valid && (
+              <p className="text-[11px] font-mono text-rose-400">{parsedDividend.error}</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-mono text-slate-300">
+              Divisor M (Registro M, 16 bits):
+            </label>
+            <input
+              type="text"
+              value={inputDivisor}
+              onChange={(e) => {
+                setInputDivisor(e.target.value);
+                setCurrentStep(0);
+              }}
+              className="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded px-3 py-1.5 font-mono text-xs text-white outline-none"
+            />
+            {parsedDivisor.valid && !isDivByZero && (
+              <div className="text-[11px] font-mono text-slate-400">
+                DEC: <span className="text-white font-bold">{parsedDivisor.dec}</span> | BIN:{' '}
+                <span className="text-emerald-400">{parsedDivisor.bin}</span>
+              </div>
+            )}
+            {isDivByZero && (
+              <p className="text-[11px] font-mono text-rose-400 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> Condición no permitida: División por cero
+              </p>
+            )}
+            {!parsedDivisor.valid && (
+              <p className="text-[11px] font-mono text-rose-400">{parsedDivisor.error}</p>
+            )}
+          </div>
+
+          {/* Results Synthesis Card */}
+          <div className="bg-slate-950 border border-slate-800 rounded p-2.5 font-mono text-xs space-y-1.5">
+            <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase">
+              <span>Cociente y Residuo</span>
               <button
                 onClick={() => {
                   setInputDividend('142');
                   setInputDivisor('5');
                   setCurrentStep(0);
                 }}
-                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 font-mono"
+                className="text-emerald-400 hover:text-emerald-300 flex items-center gap-1 lowercase"
               >
-                142 ÷ 5
-              </button>
-              <button
-                onClick={() => {
-                  setInputDividend('11');
-                  setInputDivisor('3');
-                  setCurrentStep(0);
-                }}
-                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 font-mono"
-              >
-                11 ÷ 3 (Vídeo)
-              </button>
-              <button
-                onClick={() => {
-                  setInputDividend('b1101');
-                  setInputDivisor('b11');
-                  setCurrentStep(0);
-                }}
-                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 font-mono"
-              >
-                13 ÷ 3 (Bin)
+                <RotateCcw className="w-2.5 h-2.5" /> caso 142/5
               </button>
             </div>
+            {result && (
+              <>
+                <div className="text-slate-300">
+                  COCIENTE (Q): <span className="text-white font-bold">{result.quotientDec}</span> |{' '}
+                  RESIDUO (A): <span className="text-emerald-400 font-bold">{result.remainderDec}</span>
+                </div>
+                <div className="text-[11px] text-slate-400 font-mono">
+                  {result.dividendDec} = ({result.divisorDec} × {result.quotientDec}) +{' '}
+                  {result.remainderDec} <span className="text-emerald-400">✓ Verificado</span>
+                </div>
+              </>
+            )}
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-300">
-                Dividendo (Decimal o prefijo "b", max 16 bits):
-              </label>
-              <input
-                type="text"
-                value={inputDividend}
-                onChange={(e) => {
-                  setInputDividend(e.target.value);
-                  setCurrentStep(0);
-                }}
-                className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-slate-100 font-mono text-sm outline-none transition"
-              />
-              {parsedDividend.valid && (
-                <div className="text-[11px] font-mono text-slate-400">
-                  Dec: <span className="text-white">{parsedDividend.dec}</span> | Bin:{' '}
-                  <span className="text-cyan-400">{parsedDividend.bin}</span>
-                </div>
-              )}
-              {!parsedDividend.valid && (
-                <p className="text-xs text-rose-400">{parsedDividend.error}</p>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-300">
-                Divisor (Decimal o prefijo "b", max 16 bits):
-              </label>
-              <input
-                type="text"
-                value={inputDivisor}
-                onChange={(e) => {
-                  setInputDivisor(e.target.value);
-                  setCurrentStep(0);
-                }}
-                className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-slate-100 font-mono text-sm outline-none transition"
-              />
-              {parsedDivisor.valid && !isDivByZero && (
-                <div className="text-[11px] font-mono text-slate-400">
-                  Dec: <span className="text-white">{parsedDivisor.dec}</span> | Bin:{' '}
-                  <span className="text-cyan-400">{parsedDivisor.bin}</span>
-                </div>
-              )}
-              {isDivByZero && (
-                <p className="text-xs text-amber-400 flex items-center gap-1">
-                  <AlertTriangle className="w-3.5 h-3.5" /> El divisor no puede ser cero
-                </p>
-              )}
-              {!parsedDivisor.valid && <p className="text-xs text-rose-400">{parsedDivisor.error}</p>}
-            </div>
-          </div>
-        </div>
-
-        {/* Live Result Summary Card */}
-        <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Resultados de la División
-            </span>
-            <button
-              onClick={handleCopyTable}
-              className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition"
-              title="Copiar procedimiento"
-            >
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copiado' : 'Copiar'}</span>
-            </button>
-          </div>
-
-          {result && (
-            <div className="space-y-3 font-mono text-xs">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <span className="text-slate-500 block">COCIENTE (Q):</span>
-                  <span className="text-xl font-bold text-white">{result.quotientDec}</span>
-                  <span className="text-[10px] text-emerald-400 block break-all">
-                    {result.quotientBin}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block">RESIDUO (A):</span>
-                  <span className="text-xl font-bold text-cyan-400">{result.remainderDec}</span>
-                  <span className="text-[10px] text-cyan-400/80 block break-all">
-                    {result.remainderBin}
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-400 space-y-0.5">
-                <span className="text-slate-500 block font-semibold text-[10px] uppercase">
-                  Comprobación Matemática:
-                </span>
-                <div>
-                  <span className="text-white font-bold">{result.dividendDec}</span> = (
-                  <span className="text-indigo-400">{result.divisorDec}</span> ×{' '}
-                  <span className="text-emerald-400">{result.quotientDec}</span>) +{' '}
-                  <span className="text-cyan-400">{result.remainderDec}</span>
-                </div>
-                <div className="text-[10px] text-emerald-400">
-                  {result.divisorDec * result.quotientDec + result.remainderDec === result.dividendDec
-                    ? '✓ Ecuación verificada correctamente'
-                    : '✗ Error en cálculo'}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Registers Inspector at Current Step */}
+      {/* Hardware Datapath Registers View at Current Step */}
       {currentStepData && (
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
-            <h3 className="text-sm font-semibold text-slate-200">
-              Registros en Ciclo {currentStepData.cycle} ({currentStepData.operation})
-            </h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between font-mono text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-xs"></span>
+              <span className="text-slate-300 font-bold uppercase">
+                Estado del Datapath • Ciclo {String(currentStepData.cycle).padStart(2, '0')}/16
+              </span>
+              <span className="text-slate-400">({currentStepData.operation})</span>
+            </div>
             {currentStepData.restored && (
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                ↺ Restauración Aplicada
+              <span className="px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 text-[11px] font-mono">
+                ↺ Ciclo de Restauración Ejecutado
               </span>
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center font-mono">
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-                Acumulador A (Residuo parcial)
-              </span>
-              <div className="text-sm font-bold text-cyan-400 tracking-wider">
-                {currentStepData.A}
-              </div>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-                Registro Q (Cociente parcial)
-              </span>
-              <div className="text-sm font-bold text-emerald-400 tracking-wider">
-                {currentStepData.Q}
-              </div>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-                Divisor M (Fijo)
-              </span>
-              <div className="text-sm font-bold text-indigo-400 tracking-wider">
-                {currentStepData.M}
-              </div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <RegisterGrid
+              label="Registro A (Acumulador / Residuo Parcial)"
+              bits={currentStepData.A}
+              sublabel="Contiene el residuo final tras el ciclo 16"
+              accentColor="emerald"
+            />
+            <RegisterGrid
+              label="Registro Q (Cociente Parcial)"
+              bits={currentStepData.Q}
+              sublabel="Contiene el cociente final generado"
+              accentColor="indigo"
+            />
           </div>
         </div>
       )}
 
-      {/* Step Player */}
+      {/* Stepper Controls */}
       {steps.length > 0 && (
         <StepPlayer
           currentStep={currentStep}
@@ -288,29 +251,35 @@ export const DivisionView: React.FC = () => {
         />
       )}
 
-      {/* Procedural Table */}
+      {/* Procedure Table */}
       {steps.length > 0 && (
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-200">
-              Tabla de Procedimiento de la División ({isRestoring ? 'Con Restauración' : 'Sin Restauración'})
-            </h3>
-            <span className="text-xs text-slate-400">{steps.length} pasos</span>
+        <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+          <div className="px-4 py-2.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between font-mono text-xs">
+            <span className="font-bold text-slate-300 uppercase">
+              Tabla de Procedimiento de División ({isRestoring ? 'Con Restauración' : 'Sin Restauración'})
+            </span>
+            <span className="text-slate-500 text-[11px]">16 Ciclos de Reloj</span>
           </div>
 
-          <div className="overflow-x-auto max-h-[480px]">
+          <div className="overflow-x-auto max-h-[460px]">
             <table className="w-full text-left font-mono text-xs border-collapse">
-              <thead className="sticky top-0 bg-slate-950 text-slate-400 border-b border-slate-800">
+              <thead className="sticky top-0 bg-slate-950 text-slate-400 border-b border-slate-800 text-[11px]">
                 <tr>
-                  <th className="py-2.5 px-3">Ciclo</th>
-                  <th className="py-2.5 px-3 text-cyan-400">A (Acumulador)</th>
-                  <th className="py-2.5 px-3 text-emerald-400">Q (Cociente Parcial)</th>
-                  <th className="py-2.5 px-3 text-indigo-400">M (Divisor)</th>
-                  <th className="py-2.5 px-3">Operación Realizada</th>
-                  <th className="py-2.5 px-3 text-slate-400">Detalles</th>
+                  <th className="py-2 px-3 border-r border-slate-800 w-16 text-center">Ciclo</th>
+                  <th className="py-2 px-3 border-r border-slate-800 text-emerald-400">
+                    A (Acumulador - 16b)
+                  </th>
+                  <th className="py-2 px-3 border-r border-slate-800 text-indigo-400">
+                    Q (Cociente Parcial - 16b)
+                  </th>
+                  <th className="py-2 px-3 border-r border-slate-800 text-slate-300">
+                    M (Divisor - 16b)
+                  </th>
+                  <th className="py-2 px-3 border-r border-slate-800">Operación Realizada</th>
+                  <th className="py-2 px-3 text-slate-400">Detalles de Estado</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-800/80 text-[11px]">
                 {steps.map((step, idx) => {
                   const isCurrent = idx === currentStep;
                   if (!showAllSteps && !isCurrent) return null;
@@ -319,30 +288,38 @@ export const DivisionView: React.FC = () => {
                     <tr
                       key={idx}
                       onClick={() => setCurrentStep(idx)}
-                      className={`cursor-pointer transition ${
+                      className={`cursor-pointer transition-colors ${
                         isCurrent
-                          ? 'bg-cyan-500/15 border-l-4 border-cyan-400'
-                          : 'hover:bg-slate-800/40'
+                          ? 'bg-emerald-950/40 border-l-4 border-emerald-500 text-white'
+                          : 'hover:bg-slate-800/40 text-slate-300'
                       }`}
                     >
-                      <td className="py-2 px-3 font-bold text-slate-300">{step.cycle}</td>
-                      <td className="py-2 px-3 text-cyan-400 font-mono tracking-wider">{step.A}</td>
-                      <td className="py-2 px-3 text-emerald-400 font-mono tracking-wider">{step.Q}</td>
-                      <td className="py-2 px-3 text-indigo-400 font-mono tracking-wider">{step.M}</td>
-                      <td className="py-2 px-3">
+                      <td className="py-1.5 px-3 border-r border-slate-800 text-center font-bold">
+                        {step.cycle}
+                      </td>
+                      <td className="py-1.5 px-3 border-r border-slate-800 text-emerald-400 font-mono tracking-wider">
+                        {step.A}
+                      </td>
+                      <td className="py-1.5 px-3 border-r border-slate-800 text-indigo-400 font-mono tracking-wider">
+                        {step.Q}
+                      </td>
+                      <td className="py-1.5 px-3 border-r border-slate-800 text-slate-300 font-mono">
+                        {step.M}
+                      </td>
+                      <td className="py-1.5 px-3 border-r border-slate-800">
                         <span
-                          className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                             step.restored
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              ? 'bg-amber-950 text-amber-300 border border-amber-800'
                               : step.operation.includes('Exitosa')
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-slate-800 text-slate-400'
+                              ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                              : 'text-slate-400'
                           }`}
                         >
                           {step.operation}
                         </span>
                       </td>
-                      <td className="py-2 px-3 text-[11px] text-slate-400 max-w-xs truncate">
+                      <td className="py-1.5 px-3 text-slate-400 truncate max-w-xs">
                         {step.description}
                       </td>
                     </tr>
@@ -353,6 +330,18 @@ export const DivisionView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Academic LaTeX Modal */}
+      <AcademicReportModal
+        title="Informe de Laboratorio - División Binaria"
+        algorithmName={`División Binaria (${isRestoring ? 'Con Restauración' : 'Sin Restauración'})`}
+        inputsDescription={`Dividendo = ${inputDividend} (${result?.dividendBin}) | Divisor = ${inputDivisor} (${result?.divisorBin})`}
+        resultsDescription={`Cociente: ${result?.quotientDec} (${result?.quotientBin}) | Residuo: ${result?.remainderDec} (${result?.remainderBin})`}
+        latexCode={latexCode}
+        asciiReport={asciiReport}
+        isOpen={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
+      />
     </div>
   );
 };

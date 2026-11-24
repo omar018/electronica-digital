@@ -4,7 +4,7 @@ import { DoubleDabbleView } from './components/DoubleDabbleView';
 import { BoothView } from './components/BoothView';
 import { DivisionView } from './components/DivisionView';
 import { GuideView } from './components/GuideView';
-import { Binary, Layers, Divide, BookOpen, GraduationCap } from 'lucide-react';
+import { Binary, Layers, Divide, BookOpen } from 'lucide-react';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<'doubledabble' | 'booth' | 'division' | 'guide'>('doubledabble');
@@ -12,45 +12,37 @@ export function App() {
   const navItems = [
     {
       id: 'doubledabble',
-      label: 'Double Dabble (BCD)',
+      label: 'MÓDULO 1: DOUBLE DABBLE',
       icon: Binary,
-      description: 'Binario ↔ BCD (16 bits)',
-      color: 'text-cyan-400',
-      activeBg: 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300',
+      description: 'Conversor BCD / Binario (16b)',
     },
     {
       id: 'booth',
-      label: 'Booth (Multiplicación)',
+      label: 'MÓDULO 2: MULTIPLICACIÓN DE BOOTH',
       icon: Layers,
-      description: 'Con y Sin Signo (32 bits)',
-      color: 'text-indigo-400',
-      activeBg: 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300',
+      description: 'Aritmética Signed/Unsigned (32b)',
     },
     {
       id: 'division',
-      label: 'División Binaria',
+      label: 'MÓDULO 3: DIVISIÓN BINARIA',
       icon: Divide,
-      description: 'Restoring & Non-Restoring',
-      color: 'text-emerald-400',
-      activeBg: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300',
+      description: 'Restoring & Non-Restoring (16b)',
     },
     {
       id: 'guide',
-      label: 'Teoría y Vídeos',
+      label: 'MÓDULO 4: MARCO TEÓRICO',
       icon: BookOpen,
-      description: 'Fundamentos y Referencias',
-      color: 'text-amber-400',
-      activeBg: 'bg-amber-500/15 border-amber-500/40 text-amber-300',
+      description: 'Fundamentos y Referencias UNAL',
     },
   ] as const;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
+    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans">
       <Header />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Navigation Tabs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-4">
+        {/* Laboratory Instrumentation Navigation Tabs */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -58,30 +50,38 @@ export function App() {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`p-3.5 rounded-2xl text-left border transition-all duration-200 flex items-start gap-3 ${
+                className={`p-3 rounded-lg text-left border transition-all duration-150 flex items-center gap-3 ${
                   isActive
-                    ? item.activeBg + ' shadow-lg'
-                    : 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-800/60 text-slate-400 hover:text-slate-200'
+                    ? 'bg-slate-900 border-emerald-600 text-white shadow-xs'
+                    : 'bg-slate-950/80 border-slate-800 hover:bg-slate-900/60 text-slate-400 hover:text-slate-200'
                 }`}
               >
                 <div
-                  className={`p-2 rounded-xl ${
-                    isActive ? 'bg-slate-950/60 shadow-inner' : 'bg-slate-800'
+                  className={`p-2 rounded border ${
+                    isActive
+                      ? 'bg-emerald-950 border-emerald-700 text-emerald-400'
+                      : 'bg-slate-900 border-slate-800 text-slate-500'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 ${item.color}`} />
+                  <Icon className="w-4 h-4" />
                 </div>
-                <div>
-                  <div className="text-sm font-bold tracking-tight text-white">{item.label}</div>
-                  <div className="text-[11px] text-slate-400">{item.description}</div>
+                <div className="font-mono">
+                  <div
+                    className={`text-xs font-bold uppercase tracking-wider ${
+                      isActive ? 'text-white' : 'text-slate-300'
+                    }`}
+                  >
+                    {item.label}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-sans">{item.description}</div>
                 </div>
               </button>
             );
           })}
         </div>
 
-        {/* Tab Views */}
-        <div className="transition-opacity duration-300">
+        {/* Tab Content Workbench */}
+        <div className="mt-2">
           {activeTab === 'doubledabble' && <DoubleDabbleView />}
           {activeTab === 'booth' && <BoothView />}
           {activeTab === 'division' && <DivisionView />}
@@ -89,16 +89,15 @@ export function App() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-slate-950 py-6 mt-12 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="w-4 h-4 text-cyan-400" />
-            <span>
-              Proyecto de Laboratorio de Electrónica Digital & Arquitectura • Universidad Nacional de Colombia
-            </span>
+      {/* Institutional Footer */}
+      <footer className="border-t border-slate-800 bg-slate-950 py-4 mt-8 text-xs font-mono text-slate-500">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+          <div>
+            Universidad Nacional de Colombia • Facultad de Ingeniería • Sede Bogotá
           </div>
-          <div>Profesor: Amado Ospina Montoya • Procesamiento de hasta 16 bits</div>
+          <div className="text-slate-400">
+            Electrónica Digital / Arquitectura de Computadores • Docente: <span className="text-white">Amado Ospina Montoya</span>
+          </div>
         </div>
       </footer>
     </div>

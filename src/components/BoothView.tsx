@@ -2,7 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { signedBoothMultiply, unsignedBoothMultiply } from '../engine/booth';
 import { parseInput } from '../engine/utils';
 import { StepPlayer } from './StepPlayer';
-import { Copy, Check, Sparkles } from 'lucide-react';
+import { RegisterGrid } from './RegisterGrid';
+import { AcademicReportModal } from './AcademicReportModal';
+import { FileText, RotateCcw } from 'lucide-react';
 
 export const BoothView: React.FC = () => {
   const [isSigned, setIsSigned] = useState<boolean>(true);
@@ -10,7 +12,7 @@ export const BoothView: React.FC = () => {
   const [inputQ, setInputQ] = useState<string>('-7');
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [showAllSteps, setShowAllSteps] = useState<boolean>(true);
-  const [copied, setCopied] = useState<boolean>(false);
+  const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
 
   // Parsing inputs
   const parsedM = useMemo(() => parseInput(inputM, isSigned), [inputM, isSigned]);
@@ -28,265 +30,220 @@ export const BoothView: React.FC = () => {
   const steps = result?.steps || [];
   const currentStepData = steps[currentStep] || null;
 
-  const handleCopyTable = () => {
-    if (!steps.length) return;
-    let text = `MULTIPLICACIÓN DE BOOTH (${isSigned ? 'CON SIGNO' : 'SIN SIGNO'})\n`;
-    text += `Multiplicando (M): ${inputM} | Multiplicador (Q): ${inputQ}\n\n`;
-    text += `| Cuenta | Q_0 | ${isSigned ? 'Q_-1' : 'C_f'} | AL (Registro A)   | DL (Registro Q)   | Operación |\n`;
-    text += `|--------|-----|------|-------------------|-------------------|-----------|\n`;
+  // LaTeX & ASCII Generator
+  const { latexCode, asciiReport } = useMemo(() => {
+    if (!steps.length || !result) return { latexCode: '', asciiReport: '' };
+
+    let latex = `% ---------------------------------------------------------\n`;
+    latex += `% Universidad Nacional de Colombia - Facultad de Ingeniería\n`;
+    latex += `% Algoritmo de Multiplicación de Booth (${isSigned ? 'Con Signo' : 'Sin Signo'})\n`;
+    latex += `% Multiplicando M = ${inputM} (${result.multiplicandBin})\n`;
+    latex += `% Multiplicador Q = ${inputQ} (${result.multiplierBin})\n`;
+    latex += `% ---------------------------------------------------------\n\n`;
+    latex += `\\begin{table}[htbp]\n\\centering\n\\small\n`;
+    latex += `\\caption{Traza de ejecución de la multiplicación de Booth: $${inputM} \\times ${inputQ} = ${result.productDec}$}\n`;
+    latex += `\\begin{tabular}{r c c c c l}\n`;
+    latex += `\\toprule\n`;
+    latex += `\\textbf{Cuenta} & \\textbf{$Q_0$} & \\textbf{${isSigned ? '$Q_{-1}$' : '$C_f$'}} & \\textbf{AL (Registro A)} & \\textbf{DL (Registro Q)} & \\textbf{Operación} \\\\\n`;
+    latex += `\\midrule\n`;
     steps.forEach((s) => {
-      const extraBit = isSigned ? s.Q_prev : s.Cf;
-      text += `| ${s.cycle} | ${s.Q[15]} | ${extraBit} | ${s.A} | ${s.Q} | ${s.operation} |\n`;
+      const extra = isSigned ? s.Q_prev : s.Cf;
+      latex += `${s.cycle} & ${s.Q[15]} & ${extra} & \\texttt{${s.A}} & \\texttt{${s.Q}} & ${s.operation} \\\\\n`;
     });
-    text += `\nResultado: ${result?.productDec} (Binario 32b: ${result?.productBin})\n`;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+    latex += `\\bottomrule\n\\end{tabular}\n\\end{table}\n`;
+
+    let ascii = `UNIVERSIDAD NACIONAL DE COLOMBIA - DEPARTAMENTO DE ING. ELÉCTRICA Y ELECTRÓNICA\n`;
+    ascii += `ALGORITMO DE BOOTH (${isSigned ? 'CON SIGNO - COMPLEMENTO A 2' : 'SIN SIGNO - SHIFT-ADD'})\n`;
+    ascii += `Multiplicando (M): ${inputM} [${result.multiplicandBin}]\n`;
+    ascii += `Multiplicador (Q): ${inputQ} [${result.multiplierBin}]\n`;
+    ascii += `Producto 32b: ${result.productBin} | Decimal: ${result.productDec}\n`;
+    ascii += `--------------------------------------------------------------------------------------------------\n`;
+    ascii += `| Cuenta | Q_0 | ${isSigned ? 'Q_-1' : 'C_f '} | AL (Registro A)   | DL (Registro Q)   | Operacion |\n`;
+    ascii += `--------------------------------------------------------------------------------------------------\n`;
+    steps.forEach((s) => {
+      const extra = isSigned ? s.Q_prev : s.Cf;
+      ascii += `| ${String(s.cycle).padStart(6, ' ')} |  ${s.Q[15]}  |   ${extra}  | ${s.A} | ${s.Q} | ${s.operation.padEnd(25, ' ')} |\n`;
+    });
+    ascii += `--------------------------------------------------------------------------------------------------\n`;
+
+    return { latexCode: latex, asciiReport: ascii };
+  }, [steps, result, isSigned, inputM, inputQ]);
 
   return (
-    <div className="space-y-6">
-      {/* Configuration & Inputs */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-slate-200">Tipo de Multiplicación:</span>
-              <div className="inline-flex p-1 rounded-xl bg-slate-800 border border-slate-700/60 text-xs">
-                <button
-                  onClick={() => {
-                    setIsSigned(true);
-                    setInputM('11');
-                    setInputQ('-7');
-                    setCurrentStep(0);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition ${
-                    isSigned
-                      ? 'bg-indigo-600 text-white font-bold shadow'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  Con Signo (Booth Clásico)
-                </button>
-                <button
-                  onClick={() => {
-                    setIsSigned(false);
-                    setInputM('23');
-                    setInputQ('3');
-                    setCurrentStep(0);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition ${
-                    !isSigned
-                      ? 'bg-cyan-500 text-slate-950 font-bold shadow'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  Sin Signo (Shift-Add)
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Ejemplos:</span>
-              {isSigned ? (
-                <>
-                  <button
-                    onClick={() => {
-                      setInputM('11');
-                      setInputQ('-7');
-                      setCurrentStep(0);
-                    }}
-                    className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 font-mono"
-                  >
-                    11 × -7 (Vídeo)
-                  </button>
-                  <button
-                    onClick={() => {
-                      setInputM('-15');
-                      setInputQ('-4');
-                      setCurrentStep(0);
-                    }}
-                    className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 font-mono"
-                  >
-                    -15 × -4
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => {
-                      setInputM('23');
-                      setInputQ('3');
-                      setCurrentStep(0);
-                    }}
-                    className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 font-mono"
-                  >
-                    23 × 3 (Vídeo)
-                  </button>
-                  <button
-                    onClick={() => {
-                      setInputM('142');
-                      setInputQ('5');
-                      setCurrentStep(0);
-                    }}
-                    className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 font-mono"
-                  >
-                    142 × 5
-                  </button>
-                </>
-              )}
+    <div className="space-y-4">
+      {/* Parameters Workbench */}
+      <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-mono uppercase text-slate-400">Régimen Aritmético:</span>
+            <div className="inline-flex rounded border border-slate-800 bg-slate-950 p-0.5 text-xs font-mono">
+              <button
+                onClick={() => {
+                  setIsSigned(true);
+                  setInputM('11');
+                  setInputQ('-7');
+                  setCurrentStep(0);
+                }}
+                className={`px-3 py-1 rounded transition ${
+                  isSigned
+                    ? 'bg-emerald-700 text-white font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Con Signo (Booth en Complemento a Dos)
+              </button>
+              <button
+                onClick={() => {
+                  setIsSigned(false);
+                  setInputM('23');
+                  setInputQ('3');
+                  setCurrentStep(0);
+                }}
+                className={`px-3 py-1 rounded transition ${
+                  !isSigned
+                    ? 'bg-emerald-700 text-white font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Sin Signo (Shift-Add con Carry)
+              </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-300">
-                Multiplicando M (Decimal o prefijo "b"):
-              </label>
-              <input
-                type="text"
-                value={inputM}
-                onChange={(e) => {
-                  setInputM(e.target.value);
-                  setCurrentStep(0);
-                }}
-                className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-slate-100 font-mono text-sm outline-none transition"
-              />
-              {parsedM.valid && (
-                <div className="text-[11px] font-mono text-slate-400">
-                  Dec: <span className="text-white">{parsedM.dec}</span> | Bin:{' '}
-                  <span className="text-cyan-400">{parsedM.bin}</span>
-                </div>
-              )}
-              {!parsedM.valid && <p className="text-xs text-rose-400">{parsedM.error}</p>}
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-300">
-                Multiplicador Q (Decimal o prefijo "b"):
-              </label>
-              <input
-                type="text"
-                value={inputQ}
-                onChange={(e) => {
-                  setInputQ(e.target.value);
-                  setCurrentStep(0);
-                }}
-                className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-slate-100 font-mono text-sm outline-none transition"
-              />
-              {parsedQ.valid && (
-                <div className="text-[11px] font-mono text-slate-400">
-                  Dec: <span className="text-white">{parsedQ.dec}</span> | Bin:{' '}
-                  <span className="text-cyan-400">{parsedQ.bin}</span>
-                </div>
-              )}
-              {!parsedQ.valid && <p className="text-xs text-rose-400">{parsedQ.error}</p>}
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsReportOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 text-xs font-mono transition"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Generar Informe LaTeX</span>
+            </button>
           </div>
         </div>
 
-        {/* Live Result Summary Card */}
-        <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Producto Calculado (32 bits)
-            </span>
-            <button
-              onClick={handleCopyTable}
-              className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition"
-              title="Copiar procedimiento"
-            >
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copiado' : 'Copiar'}</span>
-            </button>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-mono text-slate-300">
+              Multiplicando M (Fijo, 16 bits):
+            </label>
+            <input
+              type="text"
+              value={inputM}
+              onChange={(e) => {
+                setInputM(e.target.value);
+                setCurrentStep(0);
+              }}
+              className="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded px-3 py-1.5 font-mono text-xs text-white outline-none"
+            />
+            {parsedM.valid && (
+              <div className="text-[11px] font-mono text-slate-400">
+                DEC: <span className="text-white font-bold">{parsedM.dec}</span> | BIN:{' '}
+                <span className="text-emerald-400">{parsedM.bin}</span>
+              </div>
+            )}
+            {!parsedM.valid && <p className="text-[11px] font-mono text-rose-400">{parsedM.error}</p>}
           </div>
 
-          {result && (
-            <div className="space-y-3 font-mono text-xs">
-              <div>
-                <span className="text-slate-500 block">PRODUCTO DECIMAL:</span>
-                <span className="text-2xl font-bold text-white tracking-tight">
-                  {result.productDec.toString()}
-                </span>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-mono text-slate-300">
+              Multiplicador Q (Inicial en DL, 16 bits):
+            </label>
+            <input
+              type="text"
+              value={inputQ}
+              onChange={(e) => {
+                setInputQ(e.target.value);
+                setCurrentStep(0);
+              }}
+              className="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded px-3 py-1.5 font-mono text-xs text-white outline-none"
+            />
+            {parsedQ.valid && (
+              <div className="text-[11px] font-mono text-slate-400">
+                DEC: <span className="text-white font-bold">{parsedQ.dec}</span> | BIN:{' '}
+                <span className="text-emerald-400">{parsedQ.bin}</span>
               </div>
-              <div>
-                <span className="text-slate-500 block">BINARIO (32 BITS):</span>
-                <span className="text-emerald-400 font-mono text-xs break-all block">
-                  {result.productBin.slice(0, 16)} {result.productBin.slice(16)}
-                </span>
-                <div className="flex justify-between text-[10px] text-slate-500 mt-0.5">
-                  <span>Parte Alta [AL]: {result.productBin.slice(0, 16)}</span>
-                  <span>Parte Baja [DL]: {result.productBin.slice(16)}</span>
-                </div>
-              </div>
+            )}
+            {!parsedQ.valid && <p className="text-[11px] font-mono text-rose-400">{parsedQ.error}</p>}
+          </div>
+
+          {/* Preset Buttons & Result */}
+          <div className="bg-slate-950 border border-slate-800 rounded p-2.5 font-mono text-xs space-y-1.5">
+            <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase">
+              <span>Producto Calculado (32 bits)</span>
+              <button
+                onClick={() => {
+                  if (isSigned) {
+                    setInputM('11');
+                    setInputQ('-7');
+                  } else {
+                    setInputM('23');
+                    setInputQ('3');
+                  }
+                  setCurrentStep(0);
+                }}
+                className="text-emerald-400 hover:text-emerald-300 flex items-center gap-1 lowercase"
+              >
+                <RotateCcw className="w-2.5 h-2.5" /> caso vídeo
+              </button>
             </div>
-          )}
+            {result && (
+              <>
+                <div className="text-slate-300 text-sm">
+                  PRODUCTO DEC: <span className="text-white font-bold">{result.productDec.toString()}</span>
+                </div>
+                <div className="text-[10px] text-emerald-400 break-all font-mono">
+                  {result.productBin.slice(0, 16)} {result.productBin.slice(16)}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Registers Inspector at Current Step */}
+      {/* Hardware Datapath Registers View at Current Step */}
       {currentStepData && (
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
-            <h3 className="text-sm font-semibold text-slate-200">
-              Registros en Ciclo {currentStepData.cycle} ({currentStepData.operation})
-            </h3>
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-              {currentStepData.description}
-            </span>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between font-mono text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-xs"></span>
+              <span className="text-slate-300 font-bold uppercase">
+                Estado del Datapath • Cuenta {String(currentStepData.cycle).padStart(2, '0')}/16
+              </span>
+              <span className="text-slate-400">({currentStepData.operation})</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300 font-mono text-[11px]">
+                Q₀: <strong className="text-emerald-400">{currentStepData.Q[15]}</strong>
+              </span>
+              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300 font-mono text-[11px]">
+                {isSigned ? 'Q₋₁' : 'C_f'}:{' '}
+                <strong className="text-emerald-400">
+                  {isSigned ? currentStepData.Q_prev : currentStepData.Cf}
+                </strong>
+              </span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-center font-mono">
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-                Registro AL (Acumulador A)
-              </span>
-              <div className="text-sm font-bold text-cyan-400 tracking-wider">
-                {currentStepData.A}
-              </div>
-              <span className="text-[11px] text-slate-400 mt-1 block">
-                Dec: {currentStepData.A_dec}
-              </span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-                Registro DL (Multiplicador Q)
-              </span>
-              <div className="text-sm font-bold text-indigo-400 tracking-wider">
-                {currentStepData.Q}
-              </div>
-              <span className="text-[11px] text-slate-400 mt-1 block">
-                Dec: {currentStepData.Q_dec}
-              </span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-                {isSigned ? 'Bit Q₋₁ (Anterior)' : 'Carry Flag (Cf)'}
-              </span>
-              <div className="text-xl font-bold text-amber-400">
-                {isSigned ? currentStepData.Q_prev : currentStepData.Cf}
-              </div>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-                Multiplicando M (Fijo)
-              </span>
-              <div className="text-sm font-bold text-slate-200 tracking-wider">
-                {result?.multiplicandBin}
-              </div>
-              <span className="text-[11px] text-slate-400 mt-1 block">
-                Dec: {result?.multiplicandDec}
-              </span>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <RegisterGrid
+              label="Registro AL (Acumulador A)"
+              bits={currentStepData.A}
+              decimalValue={currentStepData.A_dec}
+              sublabel="Parte alta del producto en proceso"
+              accentColor="emerald"
+            />
+            <RegisterGrid
+              label="Registro DL (Multiplicador Q)"
+              bits={currentStepData.Q}
+              decimalValue={currentStepData.Q_dec}
+              sublabel="Parte baja del producto en proceso"
+              accentColor="indigo"
+            />
           </div>
         </div>
       )}
 
-      {/* Step Player */}
+      {/* Stepper Controls */}
       {steps.length > 0 && (
         <StepPlayer
           currentStep={currentStep}
@@ -297,29 +254,35 @@ export const BoothView: React.FC = () => {
         />
       )}
 
-      {/* Procedural Table */}
+      {/* Procedure Table */}
       {steps.length > 0 && (
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-200">
-              Tabla de Procedimiento de Booth (16 Ciclos)
-            </h3>
-            <span className="text-xs text-slate-400">{steps.length} pasos</span>
+        <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+          <div className="px-4 py-2.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between font-mono text-xs">
+            <span className="font-bold text-slate-300 uppercase">
+              Tabla de Procedimiento de Booth (Secuencia de 16 Ciclos de Reloj)
+            </span>
+            <span className="text-slate-500 text-[11px]">Ref: Amado Ospina Montoya</span>
           </div>
 
-          <div className="overflow-x-auto max-h-[480px]">
+          <div className="overflow-x-auto max-h-[460px]">
             <table className="w-full text-left font-mono text-xs border-collapse">
-              <thead className="sticky top-0 bg-slate-950 text-slate-400 border-b border-slate-800">
+              <thead className="sticky top-0 bg-slate-950 text-slate-400 border-b border-slate-800 text-[11px]">
                 <tr>
-                  <th className="py-2.5 px-3">Cuenta</th>
-                  <th className="py-2.5 px-3 text-center">Q₀</th>
-                  <th className="py-2.5 px-3 text-center">{isSigned ? 'Q₋₁' : 'Cf'}</th>
-                  <th className="py-2.5 px-3 text-cyan-400">AL (Registro A)</th>
-                  <th className="py-2.5 px-3 text-indigo-400">DL (Registro Q)</th>
-                  <th className="py-2.5 px-3">Operación Realizada</th>
+                  <th className="py-2 px-3 border-r border-slate-800 w-16 text-center">Cuenta</th>
+                  <th className="py-2 px-3 border-r border-slate-800 w-12 text-center">Q₀</th>
+                  <th className="py-2 px-3 border-r border-slate-800 w-12 text-center">
+                    {isSigned ? 'Q₋₁' : 'C_f'}
+                  </th>
+                  <th className="py-2 px-3 border-r border-slate-800 text-emerald-400">
+                    AL (Registro A - 16b)
+                  </th>
+                  <th className="py-2 px-3 border-r border-slate-800 text-indigo-400">
+                    DL (Registro Q - 16b)
+                  </th>
+                  <th className="py-2 px-3">Operación en ALU & Registro</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-800/80 text-[11px]">
                 {steps.map((step, idx) => {
                   const isCurrent = idx === currentStep;
                   if (!showAllSteps && !isCurrent) return null;
@@ -331,25 +294,35 @@ export const BoothView: React.FC = () => {
                     <tr
                       key={idx}
                       onClick={() => setCurrentStep(idx)}
-                      className={`cursor-pointer transition ${
+                      className={`cursor-pointer transition-colors ${
                         isCurrent
-                          ? 'bg-cyan-500/15 border-l-4 border-cyan-400'
-                          : 'hover:bg-slate-800/40'
+                          ? 'bg-emerald-950/40 border-l-4 border-emerald-500 text-white'
+                          : 'hover:bg-slate-800/40 text-slate-300'
                       }`}
                     >
-                      <td className="py-2 px-3 font-bold text-slate-300">{step.cycle}</td>
-                      <td className="py-2 px-3 text-center text-amber-300 font-bold">{q0}</td>
-                      <td className="py-2 px-3 text-center text-amber-400 font-bold">{extra}</td>
-                      <td className="py-2 px-3 text-cyan-400 font-mono tracking-wider">{step.A}</td>
-                      <td className="py-2 px-3 text-indigo-400 font-mono tracking-wider">{step.Q}</td>
-                      <td className="py-2 px-3">
+                      <td className="py-1.5 px-3 border-r border-slate-800 text-center font-bold">
+                        {step.cycle}
+                      </td>
+                      <td className="py-1.5 px-3 border-r border-slate-800 text-center text-white font-bold">
+                        {q0}
+                      </td>
+                      <td className="py-1.5 px-3 border-r border-slate-800 text-center text-white font-bold">
+                        {extra}
+                      </td>
+                      <td className="py-1.5 px-3 border-r border-slate-800 text-emerald-400 font-mono tracking-wider">
+                        {step.A}
+                      </td>
+                      <td className="py-1.5 px-3 border-r border-slate-800 text-indigo-400 font-mono tracking-wider">
+                        {step.Q}
+                      </td>
+                      <td className="py-1.5 px-3">
                         <span
-                          className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                             step.operation.includes('A - M')
-                              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                              ? 'bg-rose-950 text-rose-300 border border-rose-800'
                               : step.operation.includes('A + M')
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-slate-800 text-slate-400'
+                              ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                              : 'text-slate-400'
                           }`}
                         >
                           {step.operation}
@@ -363,6 +336,18 @@ export const BoothView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Academic LaTeX Modal */}
+      <AcademicReportModal
+        title="Informe de Laboratorio - Multiplicación de Booth"
+        algorithmName={`Algoritmo de Booth (${isSigned ? 'Con Signo (Complemento a 2)' : 'Sin Signo'})`}
+        inputsDescription={`M = ${inputM} (${result?.multiplicandBin}) | Q = ${inputQ} (${result?.multiplierBin})`}
+        resultsDescription={`Producto: ${result?.productDec} (32b: ${result?.productBin})`}
+        latexCode={latexCode}
+        asciiReport={asciiReport}
+        isOpen={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
+      />
     </div>
   );
 };
