@@ -1,4 +1,4 @@
-# Banco de Pruebas y Simulador de Algoritmos Aritméticos de 16 Bits ⚡
+# Banco de Pruebas y Simulador de Algoritmos Aritméticos de 16 Bits
 
 **Universidad Nacional de Colombia • Sede Medellín**  
 **Facultad de Minas**  
